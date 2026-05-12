@@ -5,31 +5,56 @@ import os
 
 app = FastAPI()
 
-BASE_URL = "https://house-generator-production.up.railway.app"
+BASE_URL = "https://house-generator-production.railway.app"
 
-# create output folder
+# ====================================================
+# OUTPUT FOLDER
+# ====================================================
+
 os.makedirs("output", exist_ok=True)
 
-# serve static files
-app.mount("/output", StaticFiles(directory="output"), name="output")
+# ====================================================
+# STATIC FILES
+# ====================================================
+
+app.mount(
+    "/output",
+    StaticFiles(directory="output"),
+    name="output"
+)
+
+# ====================================================
+# HOME
+# ====================================================
 
 @app.get("/")
 def home():
+
     return {
         "message": "Server Running"
     }
+
+# ====================================================
+# GENERATE HOUSE
+# ====================================================
 
 @app.post("/generate-house")
 def generate_house():
 
     subprocess.run([
+
         "blender",
+
         "--background",
+
         "--python",
+
         "generate_house.py"
+
     ])
 
     return {
+
         "success": True,
 
         "model_url":
