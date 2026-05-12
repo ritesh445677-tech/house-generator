@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import subprocess
+import os
 
 app = FastAPI()
+
+# create output folder if not exists
+os.makedirs("output", exist_ok=True)
 
 # serve output folder
 app.mount("/output", StaticFiles(directory="output"), name="output")
@@ -14,15 +18,13 @@ def home():
 @app.post("/generate-house")
 def generate_house():
 
-    blender_path = r"C:\Program Files\Blender Foundation\Blender 5.1\blender.exe"
-
     subprocess.run([
-        blender_path,
+        "blender",
         "--background",
         "--python",
         "generate_house.py"
     ])
 
     return {
-        "model_url": "http://127.0.0.1:8000/output/house.glb"
+        "model_url": "/output/house.glb"
     }
