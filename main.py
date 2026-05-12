@@ -5,15 +5,19 @@ import os
 
 app = FastAPI()
 
-# create output folder if not exists
+BASE_URL = "https://house-generator-production.up.railway.app"
+
+# create output folder
 os.makedirs("output", exist_ok=True)
 
-# serve output folder
+# serve static files
 app.mount("/output", StaticFiles(directory="output"), name="output")
 
 @app.get("/")
 def home():
-    return {"message": "Server Running"}
+    return {
+        "message": "Server Running"
+    }
 
 @app.post("/generate-house")
 def generate_house():
@@ -26,5 +30,8 @@ def generate_house():
     ])
 
     return {
-        "model_url": "/output/house.glb"
+        "success": True,
+
+        "model_url":
+        f"{BASE_URL}/output/house.glb"
     }
