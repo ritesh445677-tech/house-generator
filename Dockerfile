@@ -3,7 +3,7 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # ====================================================
-# INSTALL SYSTEM PACKAGES
+# INSTALL PACKAGES
 # ====================================================
 
 RUN apt update && apt install -y \
@@ -20,13 +20,13 @@ RUN apt update && apt install -y \
 WORKDIR /app
 
 # ====================================================
-# COPY FILES
+# COPY PROJECT
 # ====================================================
 
 COPY . /app
 
 # ====================================================
-# INSTALL PYTHON PACKAGES
+# INSTALL PYTHON DEPENDENCIES
 # ====================================================
 
 RUN pip3 install --break-system-packages -r requirements.txt
@@ -39,7 +39,7 @@ RUN mkdir -p /app/output
 RUN mkdir -p /app/uploads
 
 # ====================================================
-# PORT
+# EXPOSE PORT
 # ====================================================
 
 EXPOSE 8000
@@ -48,4 +48,4 @@ EXPOSE 8000
 # START SERVER
 # ====================================================
 
-CMD sh -c "python3 -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
+CMD ["sh", "-c", "python3 -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
