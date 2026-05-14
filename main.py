@@ -1,11 +1,29 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 import subprocess
 import shutil
 import os
+import uuid
+
+# ====================================================
+# FASTAPI APP
+# ====================================================
 
 app = FastAPI()
+
+# ====================================================
+# CORS
+# ====================================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ====================================================
 # BASE URL
@@ -17,9 +35,11 @@ BASE_URL = "https://house-generator-production.railway.app"
 # FOLDERS
 # ====================================================
 
-os.makedirs("output", exist_ok=True)
+OUTPUT_DIR = "/app/output"
+UPLOAD_DIR = "/app/uploads"
 
-os.makedirs("uploads", exist_ok=True)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ====================================================
 # STATIC FILES
@@ -27,68 +47,97 @@ os.makedirs("uploads", exist_ok=True)
 
 app.mount(
     "/output",
-    StaticFiles(directory="output"),
+    StaticFiles(directory=OUTPUT_DIR),
     name="output"
 )
 
 # ====================================================
-# HOME
+# HOME ROUTE
 # ====================================================
 
 @app.get("/")
 def home():
 
     return {
-
         "message": "Server Running",
-
         "status": True
     }
 
 # ====================================================
-# TEXT TO 3D HOUSE
+# TEXT TO 3D
 # ====================================================
 
 @app.post("/generate-house")
 async def generate_house(
 
     prompt: str = Form(...)
+
 ):
 
     try:
 
+        # ==============================================
+        # OUTPUT FILE
+        # ==============================================
+
+        model_filename = "house.glb"
+
+        output_file = f"{OUTPUT_DIR}/{model_filename}"
+
         # remove old file
-        old_file = "output/house.glb"
+        if os.path.exists(output_file):
+            os.remove(output_file)
 
-        if os.path.exists(old_file):
-            os.remove(old_file)
+        # ==============================================
+        # RUN BLENDER
+        # ==============================================
 
-        # run blender
-        subprocess.run([
+        result = subprocess.run(
 
-            "blender",
+            [
+                "blender",
+                "--background",
+                "--python",
+                "generate_house.py",
+                "--",
+                prompt
+            ],
 
-            "--background",
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
 
-            "--python",
+        # ==============================================
+        # DEBUG LOGS
+        # ==============================================
 
-            "generate_house.py",
+        print("BLENDER STDOUT:")
+        print(result.stdout)
 
-            "--",
+        print("BLENDER STDERR:")
+        print(result.stderr)
 
-            prompt
+        # ==============================================
+        # CHECK FILE
+        # ==============================================
 
-        ])
-
-        # check file generated
-        if not os.path.exists(old_file):
+        if not os.path.exists(output_file):
 
             return {
 
                 "success": False,
 
-                "message": "GLB file not generated"
+                "message": "GLB file not generated",
+
+                "stdout": result.stdout,
+
+                "stderr": result.stderr
             }
+
+        # ==============================================
+        # SUCCESS
+        # ==============================================
 
         return {
 
@@ -97,7 +146,16 @@ async def generate_house(
             "prompt": prompt,
 
             "model_url":
-            f"{BASE_URL}/output/house.glb"
+            f"{BASE_URL}/output/{model_filename}"
+        }
+
+    except subprocess.TimeoutExpired:
+
+        return {
+
+            "success": False,
+
+            "error": "Blender process timeout"
         }
 
     except Exception as e:
@@ -110,7 +168,7 @@ async def generate_house(
         }
 
 # ====================================================
-# IMAGE TO 3D HOUSE
+# IMAGE TO 3D
 # ====================================================
 
 @app.post("/generate-house-image")
@@ -119,12 +177,24 @@ async def generate_house_image(
     prompt: str = Form(...),
 
     file: UploadFile = File(...)
+
 ):
 
     try:
 
-        # save image
-        image_path = f"uploads/{file.filename}"
+        # ==============================================
+        # UNIQUE FILE NAME
+        # ==============================================
+
+        ext = file.filename.split(".")[-1]
+
+        unique_name = f"{uuid.uuid4()}.{ext}"
+
+        image_path = f"{UPLOAD_DIR}/{unique_name}"
+
+        # ==============================================
+        # SAVE IMAGE
+        # ==============================================
 
         with open(image_path, "wb") as buffer:
 
@@ -133,40 +203,69 @@ async def generate_house_image(
                 buffer
             )
 
-        # remove old model
-        old_file = "output/house.glb"
+        # ==============================================
+        # OUTPUT FILE
+        # ==============================================
 
-        if os.path.exists(old_file):
-            os.remove(old_file)
+        model_filename = "house.glb"
 
-        # run blender
-        subprocess.run([
+        output_file = f"{OUTPUT_DIR}/{model_filename}"
 
-            "blender",
+        # remove old file
+        if os.path.exists(output_file):
+            os.remove(output_file)
 
-            "--background",
+        # ==============================================
+        # RUN BLENDER
+        # ==============================================
 
-            "--python",
+        result = subprocess.run(
 
-            "generate_house.py",
+            [
+                "blender",
+                "--background",
+                "--python",
+                "generate_house.py",
+                "--",
+                image_path,
+                prompt
+            ],
 
-            "--",
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
 
-            image_path,
+        # ==============================================
+        # DEBUG LOGS
+        # ==============================================
 
-            prompt
+        print("BLENDER STDOUT:")
+        print(result.stdout)
 
-        ])
+        print("BLENDER STDERR:")
+        print(result.stderr)
 
-        # check output
-        if not os.path.exists(old_file):
+        # ==============================================
+        # CHECK FILE
+        # ==============================================
+
+        if not os.path.exists(output_file):
 
             return {
 
                 "success": False,
 
-                "message": "GLB file not generated"
+                "message": "GLB file not generated",
+
+                "stdout": result.stdout,
+
+                "stderr": result.stderr
             }
+
+        # ==============================================
+        # SUCCESS
+        # ==============================================
 
         return {
 
@@ -177,7 +276,16 @@ async def generate_house_image(
             "prompt": prompt,
 
             "model_url":
-            f"{BASE_URL}/output/house.glb"
+            f"{BASE_URL}/output/{model_filename}"
+        }
+
+    except subprocess.TimeoutExpired:
+
+        return {
+
+            "success": False,
+
+            "error": "Blender process timeout"
         }
 
     except Exception as e:
@@ -188,3 +296,15 @@ async def generate_house_image(
 
             "error": str(e)
         }
+
+# ====================================================
+# HEALTH CHECK
+# ====================================================
+
+@app.get("/health")
+def health():
+
+    return {
+
+        "status": "healthy"
+    }
