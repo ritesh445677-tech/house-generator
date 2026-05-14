@@ -2,16 +2,49 @@ FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt update && apt install -y blender python3 python3-pip
+# ====================================================
+# INSTALL SYSTEM PACKAGES
+# ====================================================
+
+RUN apt update && apt install -y \
+    blender \
+    python3 \
+    python3-pip \
+    && apt clean
+
+# ====================================================
+# WORK DIRECTORY
+# ====================================================
 
 WORKDIR /app
 
+# ====================================================
+# COPY PROJECT
+# ====================================================
+
 COPY . /app
+
+# ====================================================
+# INSTALL PYTHON PACKAGES
+# ====================================================
 
 RUN pip3 install --break-system-packages -r requirements.txt
 
-RUN mkdir -p output
+# ====================================================
+# CREATE REQUIRED FOLDERS
+# ====================================================
+
+RUN mkdir -p /app/output
+RUN mkdir -p /app/uploads
+
+# ====================================================
+# PORT
+# ====================================================
 
 EXPOSE 8000
 
-CMD ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# ====================================================
+# START FASTAPI
+# ====================================================
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
