@@ -10,16 +10,17 @@ RUN apt update && apt install -y \
     blender \
     python3 \
     python3-pip \
-    && apt clean
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 # ====================================================
-# WORK DIRECTORY
+# WORKDIR
 # ====================================================
 
 WORKDIR /app
 
 # ====================================================
-# COPY PROJECT
+# COPY FILES
 # ====================================================
 
 COPY . /app
@@ -31,7 +32,7 @@ COPY . /app
 RUN pip3 install --break-system-packages -r requirements.txt
 
 # ====================================================
-# CREATE REQUIRED FOLDERS
+# CREATE FOLDERS
 # ====================================================
 
 RUN mkdir -p /app/output
@@ -44,7 +45,7 @@ RUN mkdir -p /app/uploads
 EXPOSE 8000
 
 # ====================================================
-# START FASTAPI
+# START SERVER
 # ====================================================
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD sh -c "python3 -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
